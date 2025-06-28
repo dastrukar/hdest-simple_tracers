@@ -1,0 +1,14 @@
+Model HDBulletModel {
+	Path "models"
+	Model 0 "notsquarebullet.obj"
+	Skin 0 "squarebullet.png"
+	USEACTORPITCH
+	CORRECTPIXELSTRETCH
+	DONTCULLBACKFACES
+	USEROTATIONCENTER
+	Rotation-Center 0 0 0
+	Scale 100.0 50.0 50.0
+	AngleOffset 90
+
+	FrameIndex BLET A 0 0
+}
