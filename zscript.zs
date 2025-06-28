@@ -67,6 +67,11 @@ class HDBulletModel : Actor
 	Default
 	{
 		RenderStyle "Translucent";
+		+BRIGHT;
+		+NOBLOCKMAP;
+		+NOINTERACTION;
+		FloatBobPhase 0;
+		+SYNCHRONIZED;
 	}
 
 	static HDBulletModel Create(HDBulletActor target)
