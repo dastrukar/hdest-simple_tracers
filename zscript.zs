@@ -31,6 +31,7 @@ class BulletModelHandler : StaticEventHandler
 			if (tracker.Model.DelayTimer > 0)
 			{
 				tracker.Model.Alpha = 1.0;
+				tracker.Model.UpdateAnglePitch(tracker.Model.Pos, bullet.Pos);
 				tracker.Model.UpdatePos(tracker.Model.Pos, bullet.Pos);
 			}
 
@@ -82,7 +83,6 @@ class HDBulletModel : Actor
 		));
 		t.Target = target;
 		t.Scale = (0.10, 0.10); // fixed size because shotgun tracers are HUGE if i use scale
-		t.UpdateAnglePitch();
 
 		return t;
 	}
@@ -97,17 +97,15 @@ class HDBulletModel : Actor
 		PosOffset = (0, 0, 0);
 	}
 
-	// the following code is taken from https://github.com/swampyrad/HDBulletTracers/blob/main/zscript.txt
-	void UpdateAnglePitch()
+	void UpdateAnglePitch(Vector3 prev, Vector3 next)
 	{
-		// Math taken from https://stackoverflow.com/questions/2782647/how-to-get-yaw-pitch-and-roll-from-a-3d-vector
-		// Pitch: ToolmakerStever
-		// used for bullet types that have no set angle (should be identical to bullet angle anyway).
-		Angle = atan2(Target.Vel.Y, Target.Vel.X);
-		
+		Vector3 delta = Level.Vec3Diff(prev, next);
+		Angle = VectorAngle(delta.X, delta.Y);
+
+		// the following code is taken from https://github.com/swampyrad/HDBulletTracers/blob/main/zscript.txt
 		// Use atan in conjunction with the inverse of vel.z (then add 180).
 		// Condensed by phantombeta (spectralalpha on the HD Discord)
-		Pitch = atan2(-(Target.Vel.Z),Target.Vel.XY.Length()) + 180;
+		Pitch = atan2(-(delta.Z), delta.XY.Length()) + 180;
 	}
 
 	void UpdatePos(Vector3 prev, Vector3 next)
@@ -143,7 +141,7 @@ class HDBulletModel : Actor
 		}
 
 		Alpha = 1.0;
-		UpdateAnglePitch();
+		UpdateAnglePitch(Target.Prev, Target.Pos);
 		UpdatePos(Target.Prev, Target.Pos);
 	}
 
