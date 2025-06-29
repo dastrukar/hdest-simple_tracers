@@ -62,7 +62,6 @@ class HDBulletTracker
 class HDBulletModel : Actor
 {
 	int DelayTimer;
-	Vector3 PosOffset;
 	int ToDestroy;
 
 	Default
@@ -94,7 +93,6 @@ class HDBulletModel : Actor
 		DelayTimer = Random[HDBulletModel](1, 2);
 		// Alpha = 1.0;
 		// DelayTimer = 0;
-		PosOffset = (0, 0, 0);
 	}
 
 	void UpdateAnglePitch(Vector3 prev, Vector3 next)
@@ -111,7 +109,7 @@ class HDBulletModel : Actor
 	void UpdatePos(Vector3 prev, Vector3 next)
 	{
 		Vector3 inbetweenLength = Level.Vec3Diff(prev, next) * FRandom[HDBulletModel](0.4, 0.6);
-		SetOrigin(Level.Vec3Offset(prev, inbetweenLength + PosOffset), true);
+		SetOrigin(Level.Vec3Offset(prev, inbetweenLength), true);
 	}
 
 	override void Tick()
