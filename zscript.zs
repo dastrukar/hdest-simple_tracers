@@ -27,10 +27,12 @@ class BulletModelHandler : StaticEventHandler
 			if (tracker.Bullet != bullet)
 				continue;
 
-			// make the bullet visible if it had a really short life
-			if (tracker.Model.DelayTimer > 0)
+			// make the bullet visible if it had a really short life AND travelled past a certain distance
+			double deltaLength = (tracker.Model.DelayTimer > 0)? Level.Vec3Diff(tracker.Model.Pos, bullet.Pos).Length() : 0;
+			if (deltaLength > 20)
 			{
-				tracker.Model.Alpha = 1.0;
+				tracker.Model.Alpha = (deltaLength > 25)? 1.0 : 0.5;
+
 				tracker.Model.UpdateAnglePitch(tracker.Model.Pos, bullet.Pos);
 				tracker.Model.UpdatePos(tracker.Model.Pos, bullet.Pos);
 			}
