@@ -23,7 +23,7 @@ class BulletModelHandler : StaticEventHandler
 
 		for (int i = 0; i < _BulletTracker.Size(); i++)
 		{
-			let tracker = _BulletTracker[i];
+			HDBulletTracker tracker = _BulletTracker[i];
 			if (tracker.Bullet != bullet)
 				continue;
 
@@ -31,10 +31,22 @@ class BulletModelHandler : StaticEventHandler
 			double deltaLength = (tracker.Model.DelayTimer > 0)? Level.Vec3Diff(tracker.Model.Pos, bullet.Pos).Length() : 0;
 			if (deltaLength > 20)
 			{
-				tracker.Model.Alpha = (deltaLength > 25)? 1.0 : 0.5;
+				Vector3 tracerEndPos = bullet.Pos;
 
-				tracker.Model.UpdateAnglePitch(tracker.Model.Pos, bullet.Pos);
-				tracker.Model.UpdatePos(tracker.Model.Pos, bullet.Pos);
+				// if the bullet ricochets, don't interpolate with the bullet's position (because it looks wrong)
+				let tracer = HDBulletModelTracer.CreateAndTrace(tracker.Model);
+				bool hasRicochet = (tracer.HasHitGeometry && !(
+					(bullet.Pos.X <= tracer.Results.HitPos.X + 2 && bullet.Pos.X >= tracer.Results.HitPos.X - 2)
+					&& (bullet.Pos.Y <= tracer.Results.HitPos.Y + 2 && bullet.Pos.Y >= tracer.Results.HitPos.Y - 2)
+					&& (bullet.Pos.Z <= tracer.Results.HitPos.Z + 2 && bullet.Pos.Z >= tracer.Results.HitPos.Z - 2)
+				));
+				if (hasRicochet)
+					tracerEndPos = tracer.Results.HitPos;
+
+				// Console.PrintF("rico? "..(hasRicochet).." "..tracer.Results.HitPos.." "..bullet.Pos.." len:"..Level.Vec3Diff(tracker.Model.Pos, tracer.Results.HitPos).Length());
+				tracker.Model.Alpha = (deltaLength > 25)? 1.0 : 0.5;
+				tracker.Model.UpdateAnglePitch(tracker.Model.Pos, tracerEndPos);
+				tracker.Model.UpdatePos(tracker.Model.Pos, tracerEndPos);
 			}
 
 			tracker.Destroy();
@@ -60,11 +72,77 @@ class HDBulletTracker
 	}
 }
 
+class HDBulletModelTracer : LineTracer
+{
+	bool HasHitGeometry;
+
+	static HDBulletModelTracer CreateAndTrace(HDBulletModel model)
+	{
+		let t = HDBulletModelTracer(new("HDBulletModelTracer"));
+		// Console.PrintF(model.Pos.." len:"..model.PrevVel.Length() * (model.DelayTimer + 1));
+		t.Trace(
+			model.Pos,
+			model.CurSector,
+			model.PrevVel,
+			// model.PrevVel.Unit(),
+			model.PrevVel.Length() * (model.DelayTimer + 1),
+			TRACE_HitSky,
+			ignoreAllActors: true
+		);
+
+		return t;
+	}
+
+	override ETraceStatus TraceCallback()
+	{
+		if (
+			results.HitType == TRACE_HitFloor
+			|| results.HitType == TRACE_HitCeiling
+			|| (
+				results.HitType == TRACE_HitWall
+				&& (
+					results.Tier != TIER_Middle
+					|| (
+						results.HitLine
+						&& results.HitLine.flags & (Line.ML_BLOCKHITSCAN | Line.ML_BLOCKPROJECTILE)
+					)
+				)
+			)
+		)
+		{
+			// Console.PrintF("wall yes");
+			// Console.PrintF(""..results.Distance.." "..results.SrcFromTarget);
+			HasHitGeometry = true;
+			return TRACE_Stop;
+		}
+
+		return TRACE_Skip;
+	}
+}
+
+// i only used this for "tracing" the bullet's path, ignore
+class HDDebugBulletModel : Actor
+{
+	Default
+	{
+		+NOGRAVITY;
+		Translation "AllRed";
+	}
+
+	States
+	{
+		Spawn:
+			BLET A -1;
+			wait;
+	}
+}
+
 // no visualthinker because it don't support models :[
 class HDBulletModel : Actor
 {
 	int DelayTimer;
 	int ToDestroy;
+	Vector3 PrevVel;
 
 	Default
 	{
@@ -84,6 +162,7 @@ class HDBulletModel : Actor
 		));
 		t.Target = target;
 		t.Scale = (0.10, 0.10); // fixed size because shotgun tracers are HUGE if i use scale
+		t.PrevVel = target.Vel; // in case the bullet ricochets
 
 		return t;
 	}
@@ -133,6 +212,10 @@ class HDBulletModel : Actor
 			return;
 		}
 
+		PrevVel = Target.Vel;
+		UpdateAnglePitch(Target.Prev, Target.Pos);
+		UpdatePos(Target.Prev, Target.Pos);
+
 		// this is just to prevent the tracer from appearing in your face
 		if (DelayTimer > 0)
 		{
@@ -141,8 +224,6 @@ class HDBulletModel : Actor
 		}
 
 		Alpha = 1.0;
-		UpdateAnglePitch(Target.Prev, Target.Pos);
-		UpdatePos(Target.Prev, Target.Pos);
 	}
 
 	States
